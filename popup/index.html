@@ -31,6 +31,16 @@
 
     <hr />
     <div>
+      <h2>Recent Logs</h2>
+      <div class="actions">
+        <button id="refreshLogs" class="secondary">Refresh Logs</button>
+        <button id="clearLogs" class="secondary">Clear Logs</button>
+      </div>
+      <pre id="logsOutput" class="dryrun"></pre>
+    </div>
+
+    <hr />
+    <div>
       <h2>Content Debug (QA)</h2>
       <p class="muted">Active tab must be a LinkedIn People search page.</p>
       <button id="scrapeBtn" class="secondary full">Scrape Current Page</button>
@@ -47,5 +57,6 @@
   <script type="module" src="popup.js"></script>
   <script type="module" src="engine-controls.js"></script>
   <script type="module" src="content-debug.js"></script>
+  <script type="module" src="logs-panel.js"></script>
 </body>
 </html>

@@ -5,7 +5,9 @@ export const MessageType = {
   ENGINE_STOP: "ENGINE_STOP",     // UI -> background
   ENGINE_DRY_RUN: "ENGINE_DRY_RUN", // UI -> background
   CONTENT_PROFILE_BATCH: "CONTENT_PROFILE_BATCH", // content -> background
-  BACKGROUND_ACTION_REQUEST: "BACKGROUND_ACTION_REQUEST" // background -> content
+  BACKGROUND_ACTION_REQUEST: "BACKGROUND_ACTION_REQUEST", // background -> content
+  LOGS_FETCH: "LOGS_FETCH",
+  LOGS_CLEAR: "LOGS_CLEAR"
 };
 
 // Engine lifecycle states.

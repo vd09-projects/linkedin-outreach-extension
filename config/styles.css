@@ -1,0 +1,122 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 16px;
+  font-family: Arial, sans-serif;
+  background: #f6f7fb;
+  color: #202124;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+h1 {
+  margin: 0;
+  font-size: 20px;
+}
+
+h2 {
+  margin-top: 0;
+}
+
+.subhead {
+  margin: 4px 0 0 0;
+  color: #5f6368;
+}
+
+.status {
+  min-width: 140px;
+  text-align: right;
+  font-size: 12px;
+  color: #5f6368;
+}
+
+main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #e4e6eb;
+  border-radius: 8px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 12px;
+}
+
+label {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+input[type="text"],
+input[type="number"],
+textarea,
+select {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #d2d5db;
+  font-size: 14px;
+}
+
+textarea {
+  min-height: 80px;
+}
+
+.muted {
+  color: #5f6368;
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+button {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button.primary {
+  background: #0b66c2;
+  color: #fff;
+  border-color: #0b66c2;
+}
+
+button.secondary {
+  background: #fff;
+  border-color: #d2d5db;
+  color: #202124;
+}
+
+.errors {
+  color: #c62828;
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.field-error {
+  color: #c62828;
+  font-size: 12px;
+  margin-top: 4px;
+}

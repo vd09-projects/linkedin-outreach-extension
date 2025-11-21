@@ -1,0 +1,38 @@
+{
+  "name": "LinkedIn Outreach Automation",
+  "description": "Local-only MVP for controlled connection invites with configurable filters and safety guards.",
+  "version": "0.0.1",
+  "manifest_version": 3,
+  "action": {
+    "default_popup": "popup/index.html",
+    "default_title": "Outreach"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "options_page": "config/index.html",
+  "content_scripts": [
+    {
+      "matches": ["https://www.linkedin.com/search/results/people/*"],
+      "js": ["content/dom-adapter.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "shared/*.js"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "permissions": [
+    "storage",
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://www.linkedin.com/*"
+  ]
+}

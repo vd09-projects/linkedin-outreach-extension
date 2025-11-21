@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Outreach</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+  <body>
+    <div class="container">
+      <h1>Outreach</h1>
+      <p class="muted">Choose an operation to configure or run.</p>
+
+    <label for="operationSelect">Operation</label>
+    <select id="operationSelect"></select>
+    <p id="operationDescription" class="muted"></p>
+
+    <div class="actions">
+      <button id="openConfig" class="secondary">Open Config</button>
+      <button id="saveSelection" class="primary">Set as Active</button>
+    </div>
+    <div class="status" id="status"></div>
+
+    <hr />
+    <div>
+      <h2>Engine</h2>
+      <div id="engineStatus" class="muted">Engine: READY</div>
+      <button id="dryRunBtn" class="secondary full">Run Dry Run (preview)</button>
+      <pre id="dryRunResult" class="dryrun"></pre>
+    </div>
+
+    <hr />
+    <div>
+      <h2>Content Debug (QA)</h2>
+      <p class="muted">Active tab must be a LinkedIn People search page.</p>
+      <button id="scrapeBtn" class="secondary full">Scrape Current Page</button>
+      <div class="row">
+        <label for="noteInput">Note (optional, simulated)</label>
+        <textarea id="noteInput" placeholder="Hi {{firstName}}, ..."></textarea>
+      </div>
+      <button id="inviteBtn" class="secondary full">Simulate Invite to First Profile</button>
+      <button id="nextPageBtn" class="secondary full">Click Next Page</button>
+      <pre id="debugOutput" class="dryrun"></pre>
+    </div>
+  </div>
+
+  <script type="module" src="popup.js"></script>
+  <script type="module" src="engine-controls.js"></script>
+  <script type="module" src="content-debug.js"></script>
+</body>
+</html>

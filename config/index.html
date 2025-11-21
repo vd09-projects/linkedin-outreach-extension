@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Outreach Config</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header>
+    <div>
+      <h1>LinkedIn Outreach - Config</h1>
+      <p class="subhead">Choose an operation and update its settings.</p>
+    </div>
+    <div class="status" id="status"></div>
+  </header>
+
+  <main>
+    <section class="card">
+      <div class="row">
+        <label for="operationSelect">Operation</label>
+        <select id="operationSelect"></select>
+      </div>
+      <p id="operationDescription" class="muted"></p>
+    </section>
+
+    <section class="card">
+      <h2>Configuration</h2>
+      <form id="configForm"></form>
+      <div id="formErrors" class="errors"></div>
+      <div class="actions">
+        <button id="resetBtn" class="secondary">Reset</button>
+        <button id="saveBtn" class="primary">Save</button>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="config.js"></script>
+</body>
+</html>

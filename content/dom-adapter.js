@@ -116,8 +116,14 @@ function extractProfile(cardEl, index) {
     modernInfo?.location ||
     "";
 
+  const socialProofEl = findSocialProofElement(cardEl);
   const mutualConnections = parseMutualConnections(
-    textContentFrom(cardEl.querySelector("span.entity-result__simple-insight-text"))
+    textContentFrom(
+      cardEl.querySelector("span.entity-result__simple-insight-text"),
+      socialProofEl
+    ),
+    socialProofEl,
+    cardEl
   );
 
   const connectButton = findConnectButton(cardEl);
@@ -158,10 +164,25 @@ function textContentFrom(...nodes) {
   return node ? node.textContent.trim() : "";
 }
 
-function parseMutualConnections(text) {
-  if (!text) return 0;
-  const match = text.replace(/,/g, "").match(/(\\d+)/);
-  return match ? Number(match[1]) : 0;
+function parseMutualConnections(text, socialProofEl, cardEl) {
+  const sourceText = text || socialProofEl?.textContent || cardEl?.innerText || "";
+  if (!sourceText) return 0;
+  const normalized = sourceText.replace(/,/g, "").trim();
+  const otherMatch = normalized.match(/(\d+)\s+other mutual connections/i);
+  let total = countNamedConnections(socialProofEl, cardEl);
+  if (otherMatch) {
+    total += Number(otherMatch[1]);
+  }
+  if (total === 0) {
+    const match = normalized.match(/(\d+)/);
+    if (match) {
+      total = Number(match[1]);
+    }
+  }
+  if (total === 0 && /is a mutual connection/i.test(normalized)) {
+    total = 1;
+  }
+  return total;
 }
 
 function findConnectButton(scopeEl) {
@@ -287,4 +308,41 @@ function notifyProfileBatch(profiles) {
   } catch (err) {
     console.warn("Failed to notify background of profile batch:", err);
   }
+}
+
+function findSocialProofElement(cardEl) {
+  if (!cardEl) return null;
+  const scopes = [
+    cardEl,
+    cardEl.closest("li.reusable-search__result-container"),
+    cardEl.closest("div.reusable-search__result-container"),
+    cardEl.parentElement
+  ].filter(Boolean);
+
+  for (const scope of scopes) {
+    const anchor = scope.querySelector("[data-view-name='search-result-social-proof-insight']");
+    if (anchor) {
+      const paragraph = anchor.closest("p");
+      if (paragraph) return paragraph;
+      return anchor.parentElement;
+    }
+  }
+
+  const fallbackScope = scopes.find(Boolean) || cardEl;
+  const candidate = Array.from(fallbackScope.querySelectorAll("p, span")).find((node) =>
+    node.textContent?.toLowerCase().includes("mutual connection")
+  );
+  return candidate || null;
+}
+
+function countNamedConnections(socialProofEl, cardEl) {
+  const scope = socialProofEl || cardEl;
+  if (!scope) return 0;
+  const anchors = Array.from(
+    scope.querySelectorAll("[data-view-name='search-result-social-proof-insight']")
+  );
+  return anchors.filter((node) => {
+    const text = node.textContent?.trim().toLowerCase() || "";
+    return text.length > 0 && !text.includes("other mutual connections");
+  }).length;
 }

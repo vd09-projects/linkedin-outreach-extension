@@ -9,7 +9,7 @@ export const OPERATIONS = [
         label: "Job title contains",
         type: "text",
         placeholder: "e.g. engineer, founder",
-        required: true
+        required: false
       },
       {
         key: "locationKeyword",

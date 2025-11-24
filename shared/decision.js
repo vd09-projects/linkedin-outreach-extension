@@ -18,7 +18,7 @@ export function evaluateConnectDecision(rawProfile, config) {
   if (config.locationKeyword && !matchesKeyword(profile.location, config.locationKeyword))
     return skip("location_mismatch");
   if (Number.isFinite(config.minMutualConnections)) {
-    if (profile.mutualConnections < config.minMutualConnections) return skip("mutual_connections_low");
+    if (profile.mutualConnections < config.minMutualConnections) return skip("mutual_connections_low_" + profile.mutualConnections);
   }
 
   return { decision: DecisionOutcome.INVITE, reason: "success" };

@@ -1,6 +1,7 @@
 import { MessageType } from "../shared/messages.js";
 
 const dryRunBtn = document.getElementById("dryRunBtn");
+const collectBtn = document.getElementById("collectProfilesBtn");
 const statusEl = document.getElementById("engineStatus");
 const dryRunResultEl = document.getElementById("dryRunResult");
 
@@ -9,6 +10,7 @@ document.addEventListener("DOMContentLoaded", initEngineControls);
 async function initEngineControls() {
   if (!dryRunBtn) return;
   dryRunBtn.addEventListener("click", runDryRun);
+  collectBtn?.addEventListener("click", collectProfiles);
   const status = await requestStatus();
   if (!status) {
     setStatus("Background unavailable.");
@@ -31,6 +33,21 @@ async function runDryRun() {
     return;
   }
   setStatus(res.message || "Dry run complete.");
+  renderDryRun(res.result);
+}
+
+async function collectProfiles() {
+  setStatus("Collecting profiles...");
+  const res = await sendMessage({ type: MessageType.ENGINE_COLLECT_ACTIVE_TAB });
+  if (!res) {
+    setStatus("Background unavailable.");
+    return;
+  }
+  if (!res.ok) {
+    setStatus(res.message || "Collection failed.");
+    return;
+  }
+  setStatus(res.message || "Profiles collected.");
   renderDryRun(res.result);
 }
 

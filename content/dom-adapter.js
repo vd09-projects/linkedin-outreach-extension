@@ -3,7 +3,8 @@
 // so the background engine can orchestrate actions and pagination safely.
 
 const MessageType = {
-  BACKGROUND_ACTION_REQUEST: "BACKGROUND_ACTION_REQUEST"
+  BACKGROUND_ACTION_REQUEST: "BACKGROUND_ACTION_REQUEST",
+  CONTENT_PROFILE_BATCH: "CONTENT_PROFILE_BATCH"
 };
 
 const ContentAction = {
@@ -21,7 +22,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   switch (action) {
     case ContentAction.SCRAPE_PAGE:
-      sendResponse(scrapePage());
+      sendResponse(scrapePage(message.payload || {}));
       break;
     case ContentAction.SEND_INVITE:
       handleSendInvite(message.payload)
@@ -40,9 +41,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
-function scrapePage() {
+function scrapePage(options = {}) {
   const cards = getProfileCards();
   const profiles = cards.map((card, idx) => extractProfile(card, idx)).filter(Boolean);
+  if (options.notifyBackground !== false) {
+    notifyProfileBatch(profiles);
+  }
   return { ok: true, profiles, count: profiles.length };
 }
 
@@ -268,4 +272,19 @@ function waitForModal(timeoutMs = DEFAULT_TIMEOUT_MS) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function notifyProfileBatch(profiles) {
+  if (!profiles || profiles.length === 0) return;
+  try {
+    chrome.runtime.sendMessage({
+      type: MessageType.CONTENT_PROFILE_BATCH,
+      payload: {
+        profiles,
+        url: location.href
+      }
+    });
+  } catch (err) {
+    console.warn("Failed to notify background of profile batch:", err);
+  }
 }

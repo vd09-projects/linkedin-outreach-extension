@@ -7,14 +7,21 @@ import {
   validateConnectConfig
 } from "./shared/messages.js";
 import { getLocal } from "./shared/storage.js";
-import { evaluateConnectDecision } from "./shared/decision.js";
+import { evaluateConnectDecision, DecisionOutcome } from "./shared/decision.js";
 import { appendLogs, clearLogs, getLogs, LogEventType } from "./shared/logger.js";
+
+const INVITE_DELAY_MS = 3500;
+const NEXT_PAGE_DELAY_MS = 3500;
 
 const state = {
   engineState: EngineState.READY,
   activeOperation: null,
   config: null,
-  lastDryRunResult: null
+  lastDryRunResult: null,
+  shouldStop: false,
+  engineContext: null,
+  engineTask: null,
+  invitesSentTotal: 0
 };
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -92,25 +99,53 @@ function buildStatus() {
   return {
     state: state.engineState,
     activeOperation: state.activeOperation,
-    lastDryRunResult: state.lastDryRunResult
+    lastDryRunResult: state.lastDryRunResult,
+    invitesSent: state.engineContext?.invitesSent ?? state.invitesSentTotal
   };
 }
 
 async function handleStart() {
   if (state.engineState === EngineState.RUNNING) {
-    return { ok: true, message: "Already running." };
+    return { ok: true, message: "Already running.", state: buildStatus() };
   }
   const { opId, config } = await loadActiveConfig();
+  if (!opId || !config) {
+    return { ok: false, message: "Select an operation and configure it first." };
+  }
+  const tab = await getActiveTab();
+  if (!tab?.id || !isLinkedInSearchUrl(tab.url)) {
+    return { ok: false, message: "Active tab must be a LinkedIn People search results page." };
+  }
+  const injected = await ensureContentScript(tab.id);
+  if (!injected) {
+    return { ok: false, message: "Unable to inject content script into the active tab." };
+  }
+
   state.activeOperation = opId;
   state.config = config;
   state.engineState = EngineState.RUNNING;
+  state.shouldStop = false;
+  state.invitesSentTotal = 0;
+  state.engineContext = {
+    tabId: tab.id,
+    invitesSent: 0,
+    page: 1
+  };
+  state.engineTask = runConnectAutomation();
   console.log("Engine started for op:", opId, config);
   return { ok: true, message: "Engine started.", state: buildStatus() };
 }
 
 function handleStop() {
+  if (state.engineState === EngineState.RUNNING) {
+    state.shouldStop = true;
+    state.engineState = EngineState.STOPPED;
+    console.log("Engine stop requested.");
+    return;
+  }
+  state.shouldStop = false;
   state.engineState = EngineState.STOPPED;
-  console.log("Engine stopped.");
+  console.log("Engine already idle.");
 }
 
 async function handleDryRun() {
@@ -185,6 +220,9 @@ async function handleProfileBatch(payload) {
 }
 
 async function handleCollectActiveTab() {
+  if (state.engineState === EngineState.RUNNING) {
+    return { ok: false, message: "Engine is running. Stop it before collecting manually." };
+  }
   const tab = await getActiveTab();
   if (!tab?.id) {
     return { ok: false, message: "No active tab." };
@@ -227,6 +265,123 @@ async function handleCollectActiveTab() {
   return { ok: true, message: `Collected ${evaluatedProfiles.length} profiles.`, result };
 }
 
+async function runConnectAutomation() {
+  const context = state.engineContext;
+  if (!context) return;
+
+  try {
+    while (!state.shouldStop) {
+      const scrapeRes = await sendActionToTab(context.tabId, {
+        action: ContentAction.SCRAPE_PAGE,
+        notifyBackground: false
+      });
+      if (!scrapeRes?.ok) {
+        await logEngineEvent(scrapeRes?.reason || "scrape_failed");
+        break;
+      }
+      const profiles = scrapeRes.profiles || [];
+      if (profiles.length === 0) {
+        await logEngineEvent("no_profiles_on_page");
+        break;
+      }
+
+      const { opId, config } = await getActiveConfig();
+      if (!config) {
+        await logEngineEvent("missing_config");
+        break;
+      }
+      const evaluated = await evaluateAndLogProfiles(
+        profiles,
+        LogEventType.PROFILE_EVALUATION,
+        opId,
+        config
+      );
+
+      const shouldContinue = await processProfilesForInvites(context, evaluated, config);
+      if (!shouldContinue) break;
+      if (state.shouldStop) break;
+
+      const nextRes = await sendActionToTab(context.tabId, { action: ContentAction.NEXT_PAGE });
+      if (!nextRes?.ok || !nextRes.navigated) {
+        await logEngineEvent(nextRes?.reason || "next_page_failed");
+        break;
+      }
+      context.page += 1;
+      await delay(NEXT_PAGE_DELAY_MS);
+    }
+  } catch (err) {
+    console.error("Engine loop error:", err);
+    await logEngineEvent(err.message || "engine_error");
+  } finally {
+    state.engineTask = null;
+    state.engineContext = null;
+    state.shouldStop = false;
+    state.engineState = EngineState.READY;
+  }
+}
+
+async function processProfilesForInvites(context, evaluatedProfiles, config) {
+  if (!evaluatedProfiles || evaluatedProfiles.length === 0) {
+    await logEngineEvent("no_profiles_to_process");
+    return false;
+  }
+
+  for (const profile of evaluatedProfiles) {
+    if (state.shouldStop) return false;
+    if (context.invitesSent >= config.dailyLimit) {
+      await logEngineEvent("daily_limit_reached");
+      state.shouldStop = true;
+      return false;
+    }
+    if (profile.decision !== DecisionOutcome.INVITE) {
+      continue;
+    }
+
+    const inviteRes = await sendInviteToProfile(context.tabId, profile, config);
+    if (!inviteRes.ok) {
+      await appendLogs([
+        {
+          eventType: LogEventType.INVITE_FAILED,
+          reason: inviteRes.reason || "invite_failed",
+          profile: summarizeProfile(profile)
+        }
+      ]);
+      continue;
+    }
+
+    context.invitesSent += 1;
+    state.invitesSentTotal = context.invitesSent;
+    await appendLogs([
+      {
+        eventType: LogEventType.INVITE_SENT,
+        profile: summarizeProfile(profile),
+        noteUsed: inviteRes.noteUsed
+      }
+    ]);
+
+    await delay(INVITE_DELAY_MS);
+  }
+
+  return true;
+}
+
+async function sendInviteToProfile(tabId, profile, config) {
+  if (!profile?.profileId) {
+    return { ok: false, reason: "missing_profile_id" };
+  }
+  const note = buildPersonalNote(config.personalNote, profile);
+  const res = await sendActionToTab(tabId, {
+    action: ContentAction.SEND_INVITE,
+    profileId: profile.profileId,
+    note,
+    simulate: false
+  });
+  if (res?.ok) {
+    return { ok: true, noteUsed: Boolean(note && note.trim()) };
+  }
+  return { ok: false, reason: res?.reason || "send_failed" };
+}
+
 async function evaluateAndLogProfiles(profiles, eventType, opId, config) {
   if (!profiles || profiles.length === 0) return [];
   const evaluated = profiles.map((profile) => ({
@@ -246,7 +401,8 @@ function buildLogEntries(evaluatedProfiles, eventType, opId) {
     profile: {
       name: profile.name,
       title: profile.title,
-      location: profile.location
+      location: profile.location,
+      profileId: profile.profileId || ""
     }
   }));
 }
@@ -312,4 +468,37 @@ function sendActionToTab(tabId, payload) {
       }
     );
   });
+}
+
+function buildPersonalNote(template, profile) {
+  if (!template) return "";
+  const firstName = (profile?.name || "").split(/\s+/)[0] || "";
+  const replacements = {
+    firstName,
+    fullName: profile?.name || ""
+  };
+  const note = template.replace(/{{\s*(\w+)\s*}}/g, (_, key) => replacements[key] || "").trim();
+  return note.slice(0, 295);
+}
+
+function summarizeProfile(profile) {
+  return {
+    name: profile?.name || "",
+    title: profile?.title || "",
+    location: profile?.location || "",
+    profileId: profile?.profileId || ""
+  };
+}
+
+async function logEngineEvent(message) {
+  await appendLogs([
+    {
+      eventType: LogEventType.ENGINE_EVENT,
+      message
+    }
+  ]);
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

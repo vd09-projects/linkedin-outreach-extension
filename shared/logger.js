@@ -8,8 +8,10 @@ let counter = 0;
 export const LogEventType = {
   DRY_RUN_PREVIEW: "dry_run_preview",
   INVITE_SENT: "invite_sent",
+  INVITE_FAILED: "invite_failed",
   SKIPPED: "skipped",
-  PROFILE_EVALUATION: "profile_evaluation"
+  PROFILE_EVALUATION: "profile_evaluation",
+  ENGINE_EVENT: "engine_event"
 };
 
 export async function appendLogs(entries) {

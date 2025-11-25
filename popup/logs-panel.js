@@ -48,10 +48,14 @@ function renderLogs(logs) {
 
 function formatLogLine(log) {
   const time = new Date(log.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  const profileName = log.profile?.name || "Unknown";
-  const decision = log.decision ? `decision:${log.decision}` : "";
-  const reason = log.reason ? `reason:${log.reason}` : "";
-  return `${time} — ${log.eventType} — ${profileName} ${decision} ${reason}`.trim();
+  const profileName = log.profile?.name || "";
+  const parts = [];
+  if (profileName) parts.push(profileName);
+  if (log.decision) parts.push(`decision:${log.decision}`);
+  if (log.reason) parts.push(`reason:${log.reason}`);
+  if (typeof log.noteUsed === "boolean") parts.push(`note:${log.noteUsed ? "with" : "none"}`);
+  if (log.message) parts.push(log.message);
+  return `${time} — ${log.eventType}${parts.length ? " — " + parts.join(" ") : ""}`;
 }
 
 function setOutput(text) {

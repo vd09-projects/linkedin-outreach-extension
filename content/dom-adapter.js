@@ -206,6 +206,7 @@ async function handleSendInvite(payload) {
   if (!connectButton) return { ok: false, reason: "connect_not_found" };
 
   connectButton.click();
+  await handlePreInvitePrompt(note);
 
   // Wait for the invite modal or inline send state.
   const modal = await waitForModal(DEFAULT_TIMEOUT_MS);
@@ -345,4 +346,44 @@ function countNamedConnections(socialProofEl, cardEl) {
     const text = node.textContent?.trim().toLowerCase() || "";
     return text.length > 0 && !text.includes("other mutual connections");
   }).length;
+}
+
+async function handlePreInvitePrompt(note) {
+  const preferNote = Boolean(note && note.trim());
+  const start = performance.now();
+  const timeout = DEFAULT_TIMEOUT_MS / 2;
+
+  while (performance.now() - start < timeout) {
+    const promptButtons = findAddNotePromptButtons();
+    if (promptButtons) {
+      const { addBtn, sendWithoutBtn } = promptButtons;
+      if (preferNote && addBtn) {
+        addBtn.click();
+        await sleep(150);
+        return true;
+      }
+      if (!preferNote && sendWithoutBtn) {
+        sendWithoutBtn.click();
+        await sleep(150);
+        return true;
+      }
+      if (!preferNote && addBtn && !sendWithoutBtn) {
+        addBtn.click();
+        await sleep(150);
+        return true;
+      }
+    }
+    await sleep(60);
+  }
+  return false;
+}
+
+function findAddNotePromptButtons() {
+  const buttons = Array.from(document.querySelectorAll("button"));
+  const sendWithoutBtn = buttons.find((btn) =>
+    btn.textContent?.trim().toLowerCase().includes("send without a note")
+  );
+  if (!sendWithoutBtn) return null;
+  const addBtn = buttons.find((btn) => btn.textContent?.trim().toLowerCase() === "add a note");
+  return { addBtn, sendWithoutBtn };
 }

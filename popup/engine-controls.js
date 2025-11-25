@@ -2,6 +2,8 @@ import { MessageType } from "../shared/messages.js";
 
 const dryRunBtn = document.getElementById("dryRunBtn");
 const collectBtn = document.getElementById("collectProfilesBtn");
+const startBtn = document.getElementById("startEngineBtn");
+const stopBtn = document.getElementById("stopEngineBtn");
 const statusEl = document.getElementById("engineStatus");
 const dryRunResultEl = document.getElementById("dryRunResult");
 
@@ -11,6 +13,8 @@ async function initEngineControls() {
   if (!dryRunBtn) return;
   dryRunBtn.addEventListener("click", runDryRun);
   collectBtn?.addEventListener("click", collectProfiles);
+  startBtn?.addEventListener("click", startEngine);
+  stopBtn?.addEventListener("click", stopEngine);
   const status = await requestStatus();
   if (!status) {
     setStatus("Background unavailable.");
@@ -34,6 +38,7 @@ async function runDryRun() {
   }
   setStatus(res.message || "Dry run complete.");
   renderDryRun(res.result);
+  refreshStatusSoon();
 }
 
 async function collectProfiles() {
@@ -49,11 +54,44 @@ async function collectProfiles() {
   }
   setStatus(res.message || "Profiles collected.");
   renderDryRun(res.result);
+  refreshStatusSoon();
+}
+
+async function startEngine() {
+  setStatus("Starting engine...");
+  const res = await sendMessage({ type: MessageType.ENGINE_START });
+  if (!res) {
+    setStatus("Background unavailable.");
+    return;
+  }
+  if (!res.ok) {
+    setStatus(res.message || "Failed to start engine.");
+    return;
+  }
+  setStatus(res.message || "Engine running.");
+  renderStatus(res.state);
+  refreshStatusSoon();
+}
+
+async function stopEngine() {
+  setStatus("Stopping engine...");
+  const res = await sendMessage({ type: MessageType.ENGINE_STOP });
+  if (!res) {
+    setStatus("Background unavailable.");
+    return;
+  }
+  if (!res.ok) {
+    setStatus(res.message || "Failed to stop engine.");
+    return;
+  }
+  setStatus(res.message || "Engine stop requested.");
+  refreshStatusSoon();
 }
 
 function renderStatus(status) {
   if (status?.state) {
-    statusEl.textContent = `Engine: ${status.state}`;
+    const suffix = Number.isFinite(status?.invitesSent) ? ` — Invites sent: ${status.invitesSent}` : "";
+    statusEl.textContent = `Engine: ${status.state}${suffix}`;
   }
 }
 
@@ -95,4 +133,13 @@ function sendMessage(msg) {
       resolve(null);
     }
   });
+}
+
+function refreshStatusSoon() {
+  setTimeout(async () => {
+    const latest = await requestStatus();
+    if (latest) {
+      renderStatus(latest);
+    }
+  }, 400);
 }

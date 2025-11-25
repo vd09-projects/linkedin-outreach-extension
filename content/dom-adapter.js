@@ -350,40 +350,175 @@ function countNamedConnections(socialProofEl, cardEl) {
 
 async function handlePreInvitePrompt(note) {
   const preferNote = Boolean(note && note.trim());
-  const start = performance.now();
-  const timeout = DEFAULT_TIMEOUT_MS / 2;
+  const promptButtons = await waitForAddNotePromptButtons(DEFAULT_TIMEOUT_MS);
+  if (!promptButtons) {
+    console.warn("Outreach: add-note prompt buttons not found before timeout.");
+    return false;
+  }
 
-  while (performance.now() - start < timeout) {
-    const promptButtons = findAddNotePromptButtons();
-    if (promptButtons) {
-      const { addBtn, sendWithoutBtn } = promptButtons;
-      if (preferNote && addBtn) {
-        addBtn.click();
-        await sleep(150);
-        return true;
-      }
-      if (!preferNote && sendWithoutBtn) {
-        sendWithoutBtn.click();
-        await sleep(150);
-        return true;
-      }
-      if (!preferNote && addBtn && !sendWithoutBtn) {
-        addBtn.click();
-        await sleep(150);
-        return true;
-      }
-    }
-    await sleep(60);
+  const { addBtn, sendWithoutBtn } = promptButtons;
+  if (preferNote && addBtn) {
+    addBtn.click();
+    console.log("Outreach: clicked 'Add a note' prompt button.");
+    await sleep(150);
+    return true;
+  }
+  if (!preferNote && sendWithoutBtn) {
+    sendWithoutBtn.click();
+    console.log("Outreach: clicked 'Send without a note' prompt button.");
+    await sleep(150);
+    return true;
+  }
+  if (!preferNote && addBtn && !sendWithoutBtn) {
+    addBtn.click();
+    console.log("Outreach: fallback click on 'Add a note' prompt button (no send without).");
+    await sleep(150);
+    return true;
   }
   return false;
 }
 
-function findAddNotePromptButtons() {
-  const buttons = Array.from(document.querySelectorAll("button"));
-  const sendWithoutBtn = buttons.find((btn) =>
-    btn.textContent?.trim().toLowerCase().includes("send without a note")
+async function waitForAddNotePromptButtons(timeout = DEFAULT_TIMEOUT_MS) {
+  const start = performance.now();
+  while (performance.now() - start < timeout) {
+    const buttons = findAddNotePromptButtonsOnce();
+    if (buttons) return buttons;
+    await sleep(80);
+    await sleep(0); // allow DOM updates between retries
+  }
+  return null;
+}
+
+// function findAddNotePromptButtonsOnce() {
+//   const abcd = document.querySelector("div[id='interop-outlet']");
+//     console.warn("findAddNotePromptButtonsOnce abcd", abcd);
+
+//   const directSend = document.querySelector("button[aria-label='Send without a note']");
+//   const directAdd = document.querySelector("button[aria-label='Add a note']");
+//     console.warn("findAddNotePromptButtonsOnce directSend", document);
+
+//   if (directSend || directAdd) {
+//     console.warn("Outreach: found prompt buttons via direct aria query.");
+//     return { addBtn: directAdd, sendWithoutBtn: directSend };
+//   }
+
+//   const selectors = [
+//     "div.send-invite",
+//     "div[aria-labelledby='send-invite-modal']",
+//     "div.artdeco-modal__actionbar",
+//     "div[role='dialog'] div.artdeco-modal__actionbar",
+//     "div#artdeco-modal-outlet div.artdeco-modal__actionbar",
+//     "div#artdeco-modal-outlet div[role='dialog']",
+//     "form"
+//   ];
+
+//   for (const selector of selectors) {
+//     const containers = Array.from(document.querySelectorAll(selector));
+//     for (const container of containers) {
+//       const buttons = Array.from(container.querySelectorAll("button"));
+//       if (!buttons.length) continue;
+//       const sendWithoutBtn = findButtonByLabel(buttons, "send without a note");
+//       const addBtn = findButtonByLabel(buttons, "add a note");
+//       if (sendWithoutBtn || addBtn) {
+//         return { addBtn, sendWithoutBtn };
+//       }
+//     }
+//   }
+
+//   const fallbackButtons = Array.from(document.querySelectorAll("button"));
+//   const sendWithoutFallback = findButtonByLabel(fallbackButtons, "send without a note");
+//   const addFallback = findButtonByLabel(fallbackButtons, "add a note");
+//   if (sendWithoutFallback || addFallback) {
+//     return { addBtn: addFallback, sendWithoutBtn: sendWithoutFallback };
+//   }
+
+//   return null;
+// }
+
+function findButtonByLabel(buttons, label) {
+  const target = label.toLowerCase();
+  return buttons.find((btn) => {
+    const aria = (btn.getAttribute("aria-label") || "").toLowerCase();
+    const text = (btn.textContent || "").trim().toLowerCase();
+    return aria === target || text === target;
+  }) || null;
+}
+
+function findAddNotePromptButtonsOnce() {
+  // 1. Get the shadow root
+  const outlet = document.querySelector("#interop-outlet");
+  console.warn("findAddNotePromptButtonsOnce outlet:", outlet);
+
+  const root = outlet && outlet.shadowRoot ? outlet.shadowRoot : document;
+  if (!outlet || !outlet.shadowRoot) {
+    console.warn("interop-outlet has no shadowRoot, falling back to document");
+  }
+
+  // 2. Try direct aria-label query inside the correct root
+  const directSend = root.querySelector("button[aria-label='Send without a note']");
+  const directAdd  = root.querySelector("button[aria-label='Add a note']");
+  console.warn("findAddNotePromptButtonsOnce directSend:", directSend);
+  console.warn("findAddNotePromptButtonsOnce directAdd:", directAdd);
+
+  if (directSend || directAdd) {
+    console.log("Outreach: found prompt buttons via direct aria query.");
+    return { addBtn: directAdd, sendWithoutBtn: directSend };
+  }
+
+  // 3. Fallback: search common containers inside shadow root
+  const selectors = [
+    "div.send-invite",
+    "div[aria-labelledby='send-invite-modal']",
+    "div.artdeco-modal__actionbar",
+    "div[role='dialog'] div.artdeco-modal__actionbar",
+    "div#artdeco-modal-outlet div.artdeco-modal__actionbar",
+    "div#artdeco-modal-outlet div[role='dialog']",
+    "form"
+  ];
+
+  for (const selector of selectors) {
+    const containers = Array.from(root.querySelectorAll(selector));
+    for (const container of containers) {
+      const buttons = Array.from(container.querySelectorAll("button"));
+      if (!buttons.length) continue;
+
+      const sendWithoutBtn = findButtonByLabel(buttons, "send without a note");
+      const addBtn         = findButtonByLabel(buttons, "add a note");
+
+      if (sendWithoutBtn || addBtn) {
+        return { addBtn, sendWithoutBtn };
+      }
+    }
+  }
+
+  // 4. Last resort: all buttons in shadow root
+  const fallbackButtons = Array.from(root.querySelectorAll("button"));
+  const sendWithoutFallback = findButtonByLabel(fallbackButtons, "send without a note");
+  const addFallback         = findButtonByLabel(fallbackButtons, "add a note");
+
+  if (sendWithoutFallback || addFallback) {
+    return { addBtn: addFallback, sendWithoutBtn: sendWithoutFallback };
+  }
+
+  return null;
+}
+
+function describeButton(btn) {
+  if (!btn) return {};
+  return {
+    aria: btn.getAttribute("aria-label"),
+    text: btn.textContent?.trim(),
+    classes: btn.className
+  };
+}
+
+function findButtonByLabel(buttons, keyword) {
+  const target = keyword.toLowerCase();
+  return (
+    buttons.find((btn) => {
+      const aria = btn.getAttribute("aria-label")?.toLowerCase() || "";
+      const text = btn.textContent?.trim().toLowerCase() || "";
+      return aria.includes(target) || text === target || text.includes(target);
+    }) || null
   );
-  if (!sendWithoutBtn) return null;
-  const addBtn = buttons.find((btn) => btn.textContent?.trim().toLowerCase() === "add a note");
-  return { addBtn, sendWithoutBtn };
 }

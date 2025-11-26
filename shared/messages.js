@@ -34,13 +34,13 @@ export const ContentAction = {
 // Minimal config shape used by the engine for the connect operation.
 export function normalizeConnectConfig(raw) {
   if (!raw) return null;
+  const minMutual = Number(raw.minMutualConnections);
+  const dailyLimit = Number(raw.dailyLimit);
   return {
     jobTitleKeyword: raw.jobTitleKeyword?.trim() || "",
     locationKeyword: raw.locationKeyword?.trim() || "",
-    minMutualConnections: Number.isFinite(raw.minMutualConnections)
-      ? raw.minMutualConnections
-      : 0,
-    dailyLimit: Number.isFinite(raw.dailyLimit) ? raw.dailyLimit : null,
+    minMutualConnections: Number.isFinite(minMutual) ? minMutual : 0,
+    dailyLimit: Number.isFinite(dailyLimit) ? dailyLimit : null,
     personalNote: raw.personalNote ?? ""
   };
 }

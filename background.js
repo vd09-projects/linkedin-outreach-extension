@@ -139,8 +139,12 @@ async function handleStart() {
 function handleStop() {
   if (state.engineState === EngineState.RUNNING) {
     state.shouldStop = true;
-    state.engineState = EngineState.STOPPED;
+    state.engineState = EngineState.STOPPING;
     console.log("Engine stop requested.");
+    return;
+  }
+  if (state.engineState === EngineState.STOPPING) {
+    state.shouldStop = true;
     return;
   }
   state.shouldStop = false;

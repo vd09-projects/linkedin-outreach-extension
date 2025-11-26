@@ -389,65 +389,10 @@ async function waitForAddNotePromptButtons(timeout = DEFAULT_TIMEOUT_MS) {
   return null;
 }
 
-// function findAddNotePromptButtonsOnce() {
-//   const abcd = document.querySelector("div[id='interop-outlet']");
-//     console.warn("findAddNotePromptButtonsOnce abcd", abcd);
-
-//   const directSend = document.querySelector("button[aria-label='Send without a note']");
-//   const directAdd = document.querySelector("button[aria-label='Add a note']");
-//     console.warn("findAddNotePromptButtonsOnce directSend", document);
-
-//   if (directSend || directAdd) {
-//     console.warn("Outreach: found prompt buttons via direct aria query.");
-//     return { addBtn: directAdd, sendWithoutBtn: directSend };
-//   }
-
-//   const selectors = [
-//     "div.send-invite",
-//     "div[aria-labelledby='send-invite-modal']",
-//     "div.artdeco-modal__actionbar",
-//     "div[role='dialog'] div.artdeco-modal__actionbar",
-//     "div#artdeco-modal-outlet div.artdeco-modal__actionbar",
-//     "div#artdeco-modal-outlet div[role='dialog']",
-//     "form"
-//   ];
-
-//   for (const selector of selectors) {
-//     const containers = Array.from(document.querySelectorAll(selector));
-//     for (const container of containers) {
-//       const buttons = Array.from(container.querySelectorAll("button"));
-//       if (!buttons.length) continue;
-//       const sendWithoutBtn = findButtonByLabel(buttons, "send without a note");
-//       const addBtn = findButtonByLabel(buttons, "add a note");
-//       if (sendWithoutBtn || addBtn) {
-//         return { addBtn, sendWithoutBtn };
-//       }
-//     }
-//   }
-
-//   const fallbackButtons = Array.from(document.querySelectorAll("button"));
-//   const sendWithoutFallback = findButtonByLabel(fallbackButtons, "send without a note");
-//   const addFallback = findButtonByLabel(fallbackButtons, "add a note");
-//   if (sendWithoutFallback || addFallback) {
-//     return { addBtn: addFallback, sendWithoutBtn: sendWithoutFallback };
-//   }
-
-//   return null;
-// }
-
-function findButtonByLabel(buttons, label) {
-  const target = label.toLowerCase();
-  return buttons.find((btn) => {
-    const aria = (btn.getAttribute("aria-label") || "").toLowerCase();
-    const text = (btn.textContent || "").trim().toLowerCase();
-    return aria === target || text === target;
-  }) || null;
-}
-
 function findAddNotePromptButtonsOnce() {
   // 1. Get the shadow root
   const outlet = document.querySelector("#interop-outlet");
-  console.warn("findAddNotePromptButtonsOnce outlet:", outlet);
+  console.log("findAddNotePromptButtonsOnce outlet:", outlet);
 
   const root = outlet && outlet.shadowRoot ? outlet.shadowRoot : document;
   if (!outlet || !outlet.shadowRoot) {
@@ -457,8 +402,8 @@ function findAddNotePromptButtonsOnce() {
   // 2. Try direct aria-label query inside the correct root
   const directSend = root.querySelector("button[aria-label='Send without a note']");
   const directAdd  = root.querySelector("button[aria-label='Add a note']");
-  console.warn("findAddNotePromptButtonsOnce directSend:", directSend);
-  console.warn("findAddNotePromptButtonsOnce directAdd:", directAdd);
+  console.log("findAddNotePromptButtonsOnce directSend:", directSend);
+  console.log("findAddNotePromptButtonsOnce directAdd:", directAdd);
 
   if (directSend || directAdd) {
     console.log("Outreach: found prompt buttons via direct aria query.");
@@ -518,7 +463,7 @@ function findButtonByLabel(buttons, keyword) {
     buttons.find((btn) => {
       const aria = btn.getAttribute("aria-label")?.toLowerCase() || "";
       const text = btn.textContent?.trim().toLowerCase() || "";
-      return aria.includes(target) || text === target || text.includes(target);
+      return aria === target || aria.includes(target) || text === target || text.includes(target);
     }) || null
   );
 }

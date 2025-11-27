@@ -212,22 +212,16 @@ async function handleSendInvite(payload) {
   }
 
   // Wait for the invite modal or inline send state.
-  const modal = await waitForModal(DEFAULT_TIMEOUT_MS);
+  // const modal = await waitForModal(DEFAULT_TIMEOUT_MS);
+  const modal = await waitForInviteModal(DEFAULT_TIMEOUT_MS);
   if (!modal) return { ok: false, reason: "modal_not_found" };
 
   if (note && note.trim()) {
-    // const addNoteBtn = modal.querySelector("button[aria-label*='Add a note'],button[aria-label*='Add note']");
-    // if (addNoteBtn) {
-    //   addNoteBtn.click();
-    //   await sleep(150);
-    // }
     const noteArea =
       modal.querySelector("textarea[name='message']")
-      // ||
-      // modal.querySelector("textarea");
     if (!noteArea) return { ok: false, reason: "note_area_not_found" };
     noteArea.focus();
-    noteArea.value = note.slice(0, 295);
+    noteArea.value = note.slice(0, 200);
     noteArea.dispatchEvent(new Event("input", { bubbles: true }));
   }
 
@@ -292,6 +286,49 @@ function waitForModal(timeoutMs = DEFAULT_TIMEOUT_MS) {
       if (performance.now() - start > timeoutMs) return resolve(null);
       requestAnimationFrame(check);
     };
+    check();
+  });
+}
+
+const INVITE_MODAL_SELECTOR = [
+  "div[aria-labelledby='send-invite-modal']",
+  "div.send-invite[aria-labelledby='send-invite-modal']",
+  // "div.artdeco-modal.send-invite[data-test-modal][role='dialog']",
+  // "div.artdeco-modal.send-invite[role='dialog']",
+  // "div.send-invite[role='dialog']",
+  // "div.send-invite",
+  // "div[aria-labelledby='send-invite-modal']",
+].join(", ");
+
+function waitForInviteModal(timeoutMs = DEFAULT_TIMEOUT_MS) {
+  return new Promise((resolve) => {
+    const start = performance.now();
+
+    const check = () => {
+        // 1. Get the shadow root
+  const outlet = document.querySelector("#interop-outlet");
+  console.log("waitForInviteModal outlet:", outlet);
+
+  const root = outlet && outlet.shadowRoot ? outlet.shadowRoot : document;
+  if (!outlet || !outlet.shadowRoot) {
+    console.warn("waitForInviteModal interop-outlet has no shadowRoot, falling back to document");
+  }
+      const modal = root.querySelector(INVITE_MODAL_SELECTOR);
+      console.log("vdji modal", modal)
+      console.log("vdji document", root)
+
+      // Make sure it's really the invite modal (has the textarea)
+      // if (modal && modal.querySelector("textarea[name='message']")) {
+      if (modal) {
+        return resolve(modal);
+      }
+
+      if (performance.now() - start > timeoutMs) {
+        return resolve(null);
+      }
+      requestAnimationFrame(check);
+    };
+
     check();
   });
 }

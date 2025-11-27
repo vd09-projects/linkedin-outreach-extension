@@ -206,21 +206,25 @@ async function handleSendInvite(payload) {
   if (!connectButton) return { ok: false, reason: "connect_not_found" };
 
   connectButton.click();
-  await handlePreInvitePrompt(note);
+  const promptResult = await handlePreInvitePrompt(note);
+  if (promptResult?.sentImmediately) {
+    return { ok: true, reason: "sent_without_modal", profileId };
+  }
 
   // Wait for the invite modal or inline send state.
   const modal = await waitForModal(DEFAULT_TIMEOUT_MS);
   if (!modal) return { ok: false, reason: "modal_not_found" };
 
   if (note && note.trim()) {
-    const addNoteBtn = modal.querySelector("button[aria-label*='Add a note'],button[aria-label*='Add note']");
-    if (addNoteBtn) {
-      addNoteBtn.click();
-      await sleep(150);
-    }
+    // const addNoteBtn = modal.querySelector("button[aria-label*='Add a note'],button[aria-label*='Add note']");
+    // if (addNoteBtn) {
+    //   addNoteBtn.click();
+    //   await sleep(150);
+    // }
     const noteArea =
-      modal.querySelector("textarea[name='message']") ||
-      modal.querySelector("textarea");
+      modal.querySelector("textarea[name='message']")
+      // ||
+      // modal.querySelector("textarea");
     if (!noteArea) return { ok: false, reason: "note_area_not_found" };
     noteArea.focus();
     noteArea.value = note.slice(0, 295);
@@ -350,10 +354,11 @@ function countNamedConnections(socialProofEl, cardEl) {
 
 async function handlePreInvitePrompt(note) {
   const preferNote = Boolean(note && note.trim());
+  const result = { handled: false, sentImmediately: false };
   const promptButtons = await waitForAddNotePromptButtons(DEFAULT_TIMEOUT_MS);
   if (!promptButtons) {
     console.warn("Outreach: add-note prompt buttons not found before timeout.");
-    return false;
+    return result;
   }
 
   const { addBtn, sendWithoutBtn } = promptButtons;
@@ -361,21 +366,21 @@ async function handlePreInvitePrompt(note) {
     addBtn.click();
     console.log("Outreach: clicked 'Add a note' prompt button.");
     await sleep(150);
-    return true;
+    return { handled: true, sentImmediately: false };
   }
   if (!preferNote && sendWithoutBtn) {
     sendWithoutBtn.click();
     console.log("Outreach: clicked 'Send without a note' prompt button.");
     await sleep(150);
-    return true;
+    return { handled: true, sentImmediately: true };
   }
   if (!preferNote && addBtn && !sendWithoutBtn) {
     addBtn.click();
     console.log("Outreach: fallback click on 'Add a note' prompt button (no send without).");
     await sleep(150);
-    return true;
+    return { handled: true, sentImmediately: false };
   }
-  return false;
+  return result;
 }
 
 async function waitForAddNotePromptButtons(timeout = DEFAULT_TIMEOUT_MS) {

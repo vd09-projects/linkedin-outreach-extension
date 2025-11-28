@@ -330,14 +330,24 @@ async function processProfilesForInvites(context, evaluatedProfiles, config) {
     return false;
   }
 
+  const enforceLimit = Number.isFinite(config.dailyLimit) && config.dailyLimit > 0;
+
   for (const profile of evaluatedProfiles) {
     if (state.shouldStop) return false;
-    if (context.invitesSent >= config.dailyLimit) {
+    if (enforceLimit && state.invitesSentTotal >= config.dailyLimit) {
       await logEngineEvent("daily_limit_reached");
       state.shouldStop = true;
       return false;
     }
     if (profile.decision !== DecisionOutcome.INVITE) {
+      await appendLogs([
+        {
+          eventType: LogEventType.SKIPPED,
+          reason: profile.reason,
+          reasonCode: profile.reasonCode,
+          profile: summarizeProfile(profile)
+        }
+      ]);
       continue;
     }
 
@@ -354,7 +364,10 @@ async function processProfilesForInvites(context, evaluatedProfiles, config) {
     }
 
     context.invitesSent += 1;
-    state.invitesSentTotal = context.invitesSent;
+    state.invitesSentTotal += 1;
+    if (state.engineContext) {
+      state.engineContext.invitesSent = context.invitesSent;
+    }
     await appendLogs([
       {
         eventType: LogEventType.INVITE_SENT,
@@ -402,6 +415,7 @@ function buildLogEntries(evaluatedProfiles, eventType, opId) {
     opId,
     decision: profile.decision,
     reason: profile.reason,
+    reasonCode: profile.reasonCode,
     profile: {
       name: profile.name,
       title: profile.title,

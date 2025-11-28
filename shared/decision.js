@@ -5,23 +5,37 @@ export const DecisionOutcome = {
   SKIP: "skip"
 };
 
+export const DecisionReason = {
+  SUCCESS: { code: "success", message: "Meets criteria." },
+  MISSING_PROFILE_OR_CONFIG: { code: "missing_profile_or_config", message: "Missing profile/config." },
+  NO_CONNECT_BUTTON: { code: "no_connect_button", message: "Connect button not available." },
+  JOB_TITLE_MISMATCH: { code: "job_title_mismatch", message: "Job title does not match keyword." },
+  LOCATION_MISMATCH: { code: "location_mismatch", message: "Location does not match keyword." },
+  MUTUAL_CONNECTIONS_LOW: { code: "mutual_connections_low", message: "Mutual connections below minimum." }
+};
+
 export function evaluateConnectDecision(rawProfile, config) {
   if (!rawProfile || !config) {
-    return skip("missing_profile_or_config");
+    return skip(DecisionReason.MISSING_PROFILE_OR_CONFIG);
   }
 
   const profile = buildProfileFeatureShape(rawProfile);
 
-  if (!profile.hasConnectButton) return skip("no_connect_button");
+  if (!profile.hasConnectButton) return skip(DecisionReason.NO_CONNECT_BUTTON);
   if (!matchesKeyword(profile.title, config.jobTitleKeyword))
-    return skip("job_title_mismatch");
+    return skip(DecisionReason.JOB_TITLE_MISMATCH);
   if (config.locationKeyword && !matchesKeyword(profile.location, config.locationKeyword))
-    return skip("location_mismatch");
+    return skip(DecisionReason.LOCATION_MISMATCH);
   if (Number.isFinite(config.minMutualConnections)) {
-    if (profile.mutualConnections < config.minMutualConnections) return skip("mutual_connections_low_" + rawProfile.mutualConnections);
+    if (profile.mutualConnections < config.minMutualConnections) {
+      return skip({
+        ...DecisionReason.MUTUAL_CONNECTIONS_LOW,
+        message: `Requires ≥ ${config.minMutualConnections} mutual connections`
+      });
+    }
   }
 
-  return { decision: DecisionOutcome.INVITE, reason: "success" };
+  return { decision: DecisionOutcome.INVITE, reasonCode: DecisionReason.SUCCESS.code, reason: DecisionReason.SUCCESS.message };
 }
 
 export function evaluateProfiles(rawProfiles, config) {
@@ -39,5 +53,10 @@ function matchesKeyword(text, keyword) {
 }
 
 function skip(reason) {
-  return { decision: DecisionOutcome.SKIP, reason };
+  if (!reason) {
+    return { decision: DecisionOutcome.SKIP, reasonCode: "unknown", reason: "Skipped." };
+  }
+  const message = typeof reason === "string" ? reason : reason.message;
+  const code = typeof reason === "string" ? reason : reason.code;
+  return { decision: DecisionOutcome.SKIP, reasonCode: code, reason: message };
 }

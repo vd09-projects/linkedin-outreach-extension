@@ -16,6 +16,7 @@ export const EngineState = {
   READY: "READY",
   RUNNING: "RUNNING",
   STOPPED: "STOPPED",
+  STOPPING: "STOPPING",
   DRY_RUN: "DRY_RUN"
 };
 

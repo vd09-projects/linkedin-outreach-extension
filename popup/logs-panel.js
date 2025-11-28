@@ -53,6 +53,7 @@ function formatLogLine(log) {
   if (profileName) parts.push(profileName);
   if (log.decision) parts.push(`decision:${log.decision}`);
   if (log.reason) parts.push(`reason:${log.reason}`);
+  if (log.reasonCode) parts.push(`code:${log.reasonCode}`);
   if (typeof log.noteUsed === "boolean") parts.push(`note:${log.noteUsed ? "with" : "none"}`);
   if (log.message) parts.push(log.message);
   return `${time} — ${log.eventType}${parts.length ? " — " + parts.join(" ") : ""}`;
